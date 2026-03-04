@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>比特币数据看板 - btchao</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background-color: #121212; color: #e0e0e0; font-family: 'Courier New', Courier, monospace; }
+        .card { background-color: #1e1e1e; border-top: 2px solid #d32f2f; }
+        .value { color: #4caf50; font-weight: bold; }
+        .title-bar { border-bottom: 1px solid #333; padding-bottom: 0.5rem; margin-bottom: 0.75rem; }
+        /* 美化表格滚动条 */
+        .table-container::-webkit-scrollbar { height: 6px; }
+        .table-container::-webkit-scrollbar-thumb { background: #444; border-radius: 3px; }
+    </style>
+</head>
+<body class="p-6">
+
+    <header class="mb-8 flex items-baseline gap-4">
+        <h1 class="text-3xl font-bold tracking-wider">比特币全景看板</h1>
+        <span class="text-sm text-gray-400 font-normal">数据来源: Clark Moody V2 镜像</span>
+    </header>
+
+    <div id="dashboard-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <p id="loading" class="text-gray-400">正在加载核心数据...</p>
+    </div>
+    <footer class="mt-12 mb-8 text-center border-t border-gray-800 pt-6">
+        <p class="text-gray-400 text-sm tracking-wide">
+            比特囤币主站：
+            <a href="https://www.btchao.com" target="_blank" class="text-[#d32f2f] hover:text-red-400 font-bold transition-colors underline decoration-gray-700 underline-offset-4">
+                https://www.btchao.com
+            </a>
+        </p>
+    </footer>
+    <script>
+        fetch('bitcoin_dashboard_v2_zh.json')
+            .then(response => response.json())
+            .then(data => {
+                const grid = document.getElementById('dashboard-grid');
+                document.getElementById('loading').style.display = 'none';
+
+                for (const [category, content] of Object.entries(data)) {
+                    // 如果内容为空，直接跳过
+                    if (!content || (Array.isArray(content) && content.length === 0) || Object.keys(content).length === 0) continue;
+
+                    const card = document.createElement('div');
+                    card.className = 'card p-4 rounded shadow-lg flex flex-col';
+
+                    const title = document.createElement('h2');
+                    title.className = 'text-xl font-bold text-gray-200 title-bar';
+                    title.textContent = category;
+                    card.appendChild(title);
+
+                    // 【核心升级】：处理表格型数据 (数组)
+                    if (Array.isArray(content)) {
+                        const tableContainer = document.createElement('div');
+                        tableContainer.className = 'overflow-x-auto table-container';
+                        
+                        const table = document.createElement('table');
+                        table.className = 'w-full text-sm text-left whitespace-nowrap';
+                        
+                        // 生成表头
+                        const thead = document.createElement('thead');
+                        const headerRow = document.createElement('tr');
+                        headerRow.className = 'text-gray-400 border-b border-gray-700';
+                        const keys = Object.keys(content[0]);
+                        keys.forEach(key => {
+                            const th = document.createElement('th');
+                            th.className = 'pb-2 pr-4 font-normal';
+                            th.textContent = key;
+                            headerRow.appendChild(th);
+                        });
+                        thead.appendChild(headerRow);
+                        table.appendChild(thead);
+
+                        // 生成表格内容
+                        const tbody = document.createElement('tbody');
+                        content.forEach(rowObj => {
+                            const tr = document.createElement('tr');
+                            tr.className = 'border-b border-gray-800 last:border-0 hover:bg-[#2a2a2a] transition-colors';
+                            keys.forEach(key => {
+                                const td = document.createElement('td');
+                                td.className = 'py-1 pr-4 text-gray-300';
+                                td.textContent = rowObj[key];
+                                tr.appendChild(td);
+                            });
+                            tbody.appendChild(tr);
+                        });
+                        table.appendChild(tbody);
+                        tableContainer.appendChild(table);
+                        card.appendChild(tableContainer);
+
+                    } 
+                    // 处理普通的键值对数据
+                    else {
+                        for (const [key, value] of Object.entries(content)) {
+                            const row = document.createElement('div');
+                            row.className = 'flex justify-between items-center py-1 text-sm border-b border-gray-800 last:border-0';
+                            
+                            const keyEl = document.createElement('span');
+                            keyEl.className = 'text-gray-400 pr-4';
+                            keyEl.textContent = key;
+                            
+                            const valueEl = document.createElement('span');
+                            valueEl.className = 'value text-right'; 
+                            valueEl.textContent = value;
+
+                            row.appendChild(keyEl);
+                            row.appendChild(valueEl);
+                            card.appendChild(row);
+                        }
+                    }
+                    grid.appendChild(card);
+                }
+            })
+            .catch(error => {
+                console.error("加载 JSON 失败:", error);
+                document.getElementById('loading').textContent = "数据加载失败，请检查终端服务器是否开启！";
+            });
+    </script>
+</body>
+</html>
