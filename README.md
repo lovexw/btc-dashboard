@@ -31,16 +31,16 @@
 pip install -r requirements.txt
 playwright install chromium
 
-### 2. 配置 AI 密钥
+2. 配置 AI 密钥
 本项目依赖 DeepSeek 的 API 进行数据清洗。请在本地运行前设置环境变量：
 
 Bash
 export DEEPSEEK_API_KEY="sk-你的真实密钥"
-### 3. GitHub Actions 自动化
+3. GitHub Actions 自动化
 Fork 本仓库后，前往仓库的 Settings -> Secrets and variables -> Actions。
 添加一个名为 DEEPSEEK_API_KEY 的 Repository Secret，填入你的 API 密钥。GitHub 将会自动接管每 4 小时的更新任务。
 
-### 4. 前端页面 (index.html)
+4. 前端页面 (index.html)
 前端采用原生 JavaScript + Tailwind CSS 编写，纯前端解析 JSON 文件并动态生成极简深色的网格卡片与表格。部署至任意静态托管平台（如 Cloudflare Pages, Vercel, GitHub Pages）即可食用。
 
 📜 许可证 (License)
