@@ -29,7 +29,8 @@
 确保你已安装 Python 3.10+，并安装所需依赖：
 ```bash
 pip install -r requirements.txt
-playwright install chromium```
+playwright install chromium
+```
 
 2. 配置 AI 密钥
 本项目依赖 DeepSeek 的 API 进行数据清洗。请在本地运行前设置环境变量：
