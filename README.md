@@ -46,6 +46,71 @@ Fork 本仓库后，前往仓库的 Settings -> Secrets and variables -> Actions
 ### 4. 前端页面 (index.html)
 前端采用原生 JavaScript + Tailwind CSS 编写，纯前端解析 JSON 文件并动态生成极简深色的网格卡片与表格。部署至任意静态托管平台（如 Cloudflare Pages, Vercel, GitHub Pages）即可食用。
 
+## 🔌 公开 API 接口 (Public API)
+
+> “代码即法律，数据即共识。”
+
+我们不仅构建了一个前端看板，更希望为整个华文比特币社区提供一个**免费、稳定、纯净的公共基础设施**。
+
+本项目的数据接口已完全开放，且配置了无限制的跨域资源共享（CORS）。无论是你想在自己的博客挂一个比特币价格挂件，还是开发硬核的链上数据小程序，甚至是用单片机做一个实体的比特币时钟，都可以直接、免费地调用本接口。
+
+### 接口详情
+
+* **请求地址 (Endpoint):** `https://db.btchao.com/bitcoin_dashboard_v2_zh.json`
+* **请求方式 (Method):** `GET`
+* **更新频率 (Frequency):** 每 4 小时自动抓取清洗更新一次（由 GitHub Actions 驱动）
+* **跨域支持 (CORS):** `Access-Control-Allow-Origin: *` (支持全网前端跨域直连)
+* **调用频控 (Rate Limit):** 无严格限制（由 Cloudflare CDN 全球边缘节点承载流量，请合理使用，善意调用）
+
+### 调用示例 (Usage Examples)
+
+**示例 1：使用 JavaScript / 前端 Fetch**
+```javascript
+// 直接在你的前端项目中调用，获取最新的中文比特币全景数据
+fetch('[https://db.btchao.com/bitcoin_dashboard_v2_zh.json](https://db.btchao.com/bitcoin_dashboard_v2_zh.json)')
+  .then(response => response.json())
+  .then(data => {
+      console.log("当前比特币价格:", data["Markets"]["价格"]);
+      console.log("距离下次减半区块数:", data["Halving"]["距离减半区块数"]);
+      // 遍历解析更多数据...
+  })
+  .catch(error => console.error('数据获取失败:', error));
+示例 2：使用 Python
+
+Python
+import requests
+
+url = "[https://db.btchao.com/bitcoin_dashboard_v2_zh.json](https://db.btchao.com/bitcoin_dashboard_v2_zh.json)"
+response = requests.get(url)
+
+if response.status_code == 200:
+    bitcoin_data = response.json()
+    print(f"🔥 全网可达节点数: {bitcoin_data['Bitcoin Network']['可达比特币节点数']}")
+    print(f"⚡ 闪电网络总容量: {bitcoin_data['Lightning Network (Public)']['总容量']}")
+示例 3：使用终端 Curl
+
+Bash
+curl -s [https://db.btchao.com/bitcoin_dashboard_v2_zh.json](https://db.btchao.com/bitcoin_dashboard_v2_zh.json) | grep "价格"
+数据结构预览
+返回的数据为纯粹的 JSON 格式，包含了一维指标字典与多维复杂数组（如节点版本列表、闪电通道年份分布等）：
+
+JSON
+{
+    "Markets": {
+        "价格": "$68,510",
+        "市值": "$1.37T"
+    },
+    "Top Node Versions": [
+        {
+            "版本": "Core 30.0.0",
+            "数量": "3,597",
+            "百分比": "14.8%"
+        }
+    ]
+    // ... 包含 30+ 个大类，数百项硬核数据
+}
+🤝 开发者约定： 本接口完全免费开放，不设鉴权。如果这个数据源对你的项目有帮助，欢迎在你的项目中添加一句简单的致谢或带上主站回链（Data provided by btchao.com），这是对开源精神最大的支持。
+
 ### 📜 许可证 (License)
 本项目前端展示与代码逻辑开源。
 致敬 Clark Moody 提供的伟大原始数据面板。
