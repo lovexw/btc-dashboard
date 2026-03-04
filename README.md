@@ -75,8 +75,11 @@ fetch('[https://db.btchao.com/bitcoin_dashboard_v2_zh.json](https://db.btchao.co
       // 遍历解析更多数据...
   })
   .catch(error => console.error('数据获取失败:', error));
-示例 2：使用 Python
+```
 
+**示例 2：使用 Python**
+
+```
 Python
 import requests
 
@@ -87,13 +90,16 @@ if response.status_code == 200:
     bitcoin_data = response.json()
     print(f"🔥 全网可达节点数: {bitcoin_data['Bitcoin Network']['可达比特币节点数']}")
     print(f"⚡ 闪电网络总容量: {bitcoin_data['Lightning Network (Public)']['总容量']}")
-示例 3：使用终端 Curl
+```
 
+**示例 3：使用终端 Curl**
+```
 Bash
 curl -s [https://db.btchao.com/bitcoin_dashboard_v2_zh.json](https://db.btchao.com/bitcoin_dashboard_v2_zh.json) | grep "价格"
+```
 数据结构预览
 返回的数据为纯粹的 JSON 格式，包含了一维指标字典与多维复杂数组（如节点版本列表、闪电通道年份分布等）：
-
+```
 JSON
 {
     "Markets": {
@@ -109,6 +115,7 @@ JSON
     ]
     // ... 包含 30+ 个大类，数百项硬核数据
 }
+```
 🤝 开发者约定： 本接口完全免费开放，不设鉴权。如果这个数据源对你的项目有帮助，欢迎在你的项目中添加一句简单的致谢或带上主站回链（Data provided by btchao.com），这是对开源精神最大的支持。
 
 ### 📜 许可证 (License)
