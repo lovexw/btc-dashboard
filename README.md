@@ -37,6 +37,7 @@ playwright install chromium
 
 Bash
 export DEEPSEEK_API_KEY="sk-你的真实密钥"
+
 3. GitHub Actions 自动化
 Fork 本仓库后，前往仓库的 Settings -> Secrets and variables -> Actions。
 添加一个名为 DEEPSEEK_API_KEY 的 Repository Secret，填入你的 API 密钥。GitHub 将会自动接管每 4 小时的更新任务。
