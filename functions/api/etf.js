@@ -3,8 +3,13 @@
 import { json, cachedJSON, firstOk, fetchText } from "../lib/util.js";
 
 export async function onRequest(ctx) {
-  const { data, cache } = await cachedJSON(ctx, "etf-v1", 6 * 3600, buildEtf);
-  return json({ ts: Date.now(), cache, ...data }, { ttl: 1800 });
+  try {
+    const { data, cache } = await cachedJSON(ctx, "etf-v1", 6 * 3600, buildEtf);
+    return json({ ts: Date.now(), cache, ...data }, { ttl: 1800 });
+  } catch (e) {
+    // 全部源失败：优雅降级（前端隐藏模块），错误详情便于诊断
+    return json({ ts: Date.now(), latest: null, error: String(e.message || e).slice(0, 300) }, { ttl: 300 });
+  }
 }
 
 // Jina Reader 会按 Accept 头返回 JSON 包装（{data:{content}}），统一解包成纯文本
