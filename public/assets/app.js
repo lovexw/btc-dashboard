@@ -4,7 +4,7 @@ const UP = "#dc2626", DOWN = "#16a34a", BRAND = "#f7931a", BLUE = "#2f6fed", PUR
 const ZONE_COLORS = { z1: "#16a34a", z2: "#65a30d", z3: "#d97706", z4: "#ea580c", z5: "#dc2626", z0: GRAY };
 const HALVINGS = ["2012-11-28", "2016-07-09", "2020-05-11", "2024-04-20"];
 
-const state = { overview: null, history: null, onchain: null, mining: null, sentiment: null, etf: null, health: null, staleKeys: new Set(), builtin: null, price: null };
+const state = { overview: null, history: null, onchain: null, mining: null, sentiment: null, etf: null, dxy: null, health: null, staleKeys: new Set(), builtin: null, price: null };
 const charts = new Map(); // name -> echarts instance
 const chartVisible = new Set(), chartBuilt = new Set();
 
@@ -365,6 +365,25 @@ const BUILDERS = {
     o.series[0].markLine = { silent: true, symbol: "none", lineStyle: { color: GRAY, width: 1 }, label: { show: false }, data: [{ yAxis: 0 }] };
     return o;
   },
+  dxy: () => {
+    const d = state.dxy, h = state.history; if (!d || !d.series || !h) return nullOpt();
+    const o = baseOpt({ legend: ["美元指数 DXY", "BTC 价格"], grid: { right: 62 } });
+    const f = Math.max(0, h.dates.findIndex((dt) => dt >= new Date(d.series[0][0]).toISOString().slice(0, 10)));
+    o.series = [
+      { name: "美元指数 DXY", type: "line", data: d.series, showSymbol: false, lineStyle: { color: BLUE, width: 1.7 }, itemStyle: { color: BLUE } },
+      { name: "BTC 价格", type: "line", yAxisIndex: 1, data: toPairs(h.dates, h.series.price, f), showSymbol: false, lineStyle: { color: BRAND, width: 1.4 }, itemStyle: { color: BRAND } },
+    ];
+    o.yAxis = [
+      { type: "value", ...axisExtra(), scale: true, name: "DXY", nameTextStyle: { color: "#8a92a3", fontSize: 10 } },
+      { type: "log", logBase: 10, ...axisExtra(), scale: true, splitLine: { show: false }, axisLabel: { ...axisExtra().axisLabel, formatter: (v) => (v >= 1000 ? (v / 1000) + "k" : v) } },
+    ];
+    o.tooltip.formatter = (ps) => {
+      const t = ps[0] && ps[0].value[0] ? new Date(ps[0].value[0]).toLocaleDateString("zh-CN") : "";
+      const rows = ps.map((p2) => `<div style="display:flex;justify-content:space-between;gap:14px"><span style="color:#697180">${esc(p2.seriesName)}</span><b>${p2.seriesName === "美元指数 DXY" ? p2.value[1].toFixed(2) : fmtUSD(p2.value[1])}</b></div>`).join("");
+      return `<div style="min-width:170px"><div style="font-weight:700;margin-bottom:4px">${t}</div>${rows}</div>`;
+    };
+    return o;
+  },
   stables: () => {
     const s = state.sentiment; if (!s || !s.stablecoins) return nullOpt();
     const o = baseOpt({ legend: ["USDT", "USDC"], grid: { right: 24 } });
@@ -481,6 +500,7 @@ function renderQuickStrip() {
     { k: "稳定币 30d Δ", v: s && s.stablecoins ? `<span class="${s.stablecoins.usdt.d30Pct >= 0 ? "up" : "down"}">${fmtPct(s.stablecoins.usdt.d30Pct)}</span>` : o && o.stablecoins ? `<span class="${o.stablecoins.usdt.d30Pct >= 0 ? "up" : "down"}">${fmtPct(o.stablecoins.usdt.d30Pct)}</span>` : "…", tip: "USDT 市值 30 天变化（增量资金）" },
     { k: "Coinbase 溢价", v: s && s.coinbasePremiumPct != null ? fmtPct(s.coinbasePremiumPct, 2) : o && o.coinbasePremiumPct != null ? fmtPct(o.coinbasePremiumPct, 2) : "…", tip: "Coinbase 相对 Binance 溢价（美股资金情绪）" },
     { k: "ETF 30日净流", v: state.etf ? fmtYi(state.etf.sum30M) : "…", tip: "美国现货比特币 ETF 最近 30 个交易日净流入（Farside）" },
+    { k: "美元指数 DXY", v: state.dxy && state.dxy.latest ? state.dxy.latest.value.toFixed(2) : "…", tip: "美元强弱温度计：走强=BTC 逆风，走弱=顺风" },
   ];
   $("#quickStrip").innerHTML = items.map((i) => `<div class="qs" title="${esc(i.tip)}"><div class="k">${esc(i.k)}</div><div class="v">${i.v}</div></div>`).join("");
 }
@@ -742,6 +762,13 @@ function renderSentiment() {
     s: "Coinbase vs Binance 现货",
     zone: `<span class="badge ${s.coinbasePremiumPct >= 0 ? "up" : "down"}">${s.coinbasePremiumPct >= 0 ? "美盘买盘" : "美盘卖压"}</span>`,
   }));
+  const dxy = state.dxy && state.dxy.latest ? state.dxy : null;
+  if (dxy) cards.push(valCard({
+    title: "美元指数 DXY", tip: "美元对欧元(57.6%)、日元(13.6%)、英镑(11.9%)等一篮子货币的加权强弱指数。BTC 以美元计价：美元趋势走强=流动性收紧的逆风，走弱=顺风。看趋势与拐点，别只看绝对值。",
+    value: dxy.latest.value.toFixed(2),
+    s: `1日 ${fmtPct(dxy.latest.changePct1d, 2)} · 30日 ${fmtPct(dxy.latest.changePct30d, 2)} · 200日均值 ${dxy.ma200 != null ? dxy.ma200.toFixed(2) : "—"}（${dxy.source}）`,
+    zone: `<span class="badge ${dxy.strong ? "up" : "down"}">${dxy.strong ? "美元偏强（逆风）" : "美元偏弱（顺风）"}</span>`,
+  }));
   $("#sentCards").innerHTML = cards.join("");
 
   // Polymarket
@@ -789,6 +816,7 @@ const GLOSSARY = [
   { t: "休眠指数", en: "Dormancy", one: "衡量『沉睡的老币』有没有苏醒换手。", detail: "基于币天销毁（CDD）的归一化指标：一枚持有了 100 天的币被转走，销毁 100 币天。休眠指数把销毁量除以供应量，让不同时期可比。", how: "飙升=高币龄筹码大规模移动，历史上多与顶部派发、恐慌抛售同时出现；长期低迷=市场惜售囤币。配合 HODL Waves 一起看。", src: "Bitview/BRK（1 周平滑）" },
   { t: "Hash Ribbons 算力均线", en: "Hash Ribbons", one: "用矿工的『生死』反着买：矿工投降结束后，往往是最好的买点之一。", detail: "算力 30 日均线与 60 日均线的交叉。矿机大规模关机（如减半后效率淘汰、币价暴跌）会使 30 日线下穿 60 日线（死叉）；矿工重新开机则金叉。", how: "死叉=矿工投降期（常与价格底部重叠）；金叉=投降结束、算力恢复，历史上金叉后的定投窗口回报突出。注意：减半后的机械性关机也会触发死叉，需与币价环境结合判断。", src: "自算（mempool.space 日均算力）" },
   { t: "网络活跃度", en: "Active Addresses & Transactions", one: "比特币的『日活用户』和『订单量』，链上的基本面。", detail: "每日活跃地址数与链上交易笔数（Coin Metrics 社区版）。剔除中心化交易所的内部买卖，直接反映链上真实使用强度。", how: "长期增长=采用扩大（基本面支撑价格）；价格新高而活跃度平平=上涨靠情绪与杠杆，需警惕背离。短期受 Ordinals/铭文等活动影响会脉冲式波动，看趋势即可。", src: "Coin Metrics 社区版" },
+  { t: "美元指数", en: "DXY (US Dollar Index)", one: "美元的『身价』温度计：美元越贵，用美元计价的 BTC 越容易被压。", detail: "DXY 衡量美元对一篮子主要货币的强弱：欧元 57.6%、日元 13.6%、英镑 11.9%、加元 9.1%、瑞典克朗 4.2%、瑞郎 3.6%。美元走强通常伴随全球美元流动性收紧（加息/缩表），风险资产（股票、BTC）普遍承压；美元走弱（降息/扩表）则流动性顺风。", how: "① 看趋势：DXY 上行趋势 + BTC 横盘 = 承压测试；DXY 见顶回落 = 流动性拐点，历史上多次对应 BTC 大级别买点。② 看与本站图的『跷跷板』：两线反向走是常态，同向走说明另有主导因素。③ 相关性是倾向不是铁律——2022 年两者同跌是流动性危机特例。", src: "Yahoo Finance（ICE 美元指数）· 备源：欧央行汇率按官方权重自算" },
 ];
 function renderGlossary() {
   $("#glossary").innerHTML = GLOSSARY.map((g, i) => `<details ${i === 0 ? "open" : ""}><summary>${esc(g.t)} <span class="muted" style="font-weight:400;font-size:11.5px">${esc(g.en)}</span><span class="chev">▼</span></summary>
@@ -819,6 +847,7 @@ async function loadRest() {
     getJSON("onchain", "/api/onchain").then(({ data }) => { state.onchain = data; refreshVisibleCharts(); renderValuation(); renderLadder(); renderOnchainCards(); renderQuickStrip(); renderComposite(); }),
     getJSON("mining", "/api/mining").then(({ data }) => { state.mining = data; refreshVisibleCharts(); renderMining(); }),
     getJSON("etf", "/api/etf", { store: false }).then(({ data }) => { state.etf = data; refreshVisibleCharts(); renderEtf(); renderQuickStrip(); }),
+    getJSON("dxy", "/api/dxy").then(({ data }) => { state.dxy = data; refreshVisibleCharts(); renderSentiment(); renderQuickStrip(); }),
     getJSON("sentiment", "/api/sentiment").then(({ data }) => { state.sentiment = data; refreshVisibleCharts(); renderSentiment(); renderQuickStrip(); }),
   ];
   await Promise.allSettled(jobs);

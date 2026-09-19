@@ -34,6 +34,7 @@
 | 资金费率 | OKX | — |
 | 稳定币市值 | DefiLlama | — |
 | 预测市场 | Polymarket | — |
+| 美元指数 DXY | Yahoo Finance（ICE 指数） | 欧央行参考汇率按官方权重自算 |
 | 市值 | 现价 × 精确链上供应量 | CoinGecko |
 
 自算指标（公式透明）：200WMA、MA111/250/350/850、Pi Cycle、200日定投成本（调和平均）、幂律 OLS 回归+残差分位走廊、AHR999 经典与自拟合、综合估值评分（7 维分段线性加权）、MVRV Z-Score（含历史分位）、HODL Waves 占比、Hash Ribbons 算力均线、关机币价矩阵。
@@ -92,6 +93,7 @@ scripts/snapshot.mjs  快照生成脚本
 | `GET /api/mining` | 30min | 难度调整、算力 3 年、奖励、费率、内存池、关机币价矩阵 |
 | `GET /api/sentiment` | 5min | FGI 2 年、资金费率 30 天、稳定币 180 天、Coinbase 溢价、Polymarket |
 | `GET /api/etf` | 6h | 现货 ETF 每日净流入/累计/各发行人（Farside，690 个交易日） |
+| `GET /api/dxy` | 30min | 美元指数近 2 年日线（Yahoo/ECB 双源）、1日/30日变化、200 日均值 |
 | `GET /api/health` | 30s | 14 个上游并发探测 |
 
 ## License

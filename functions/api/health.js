@@ -15,6 +15,8 @@ const CHECKS = [
   { name: "bitcoin-data", label: "bitcoin-data.com（BGeo 镜像）", url: "https://bitcoin-data.com/v1/transfer-price", tier: 2 },
   { name: "polymarket", label: "Polymarket 预测市场", url: "https://gamma-api.polymarket.com/events?slug=what-price-will-bitcoin-hit-before-2027", tier: 2 },
   { name: "coingecko", label: "CoinGecko 市值备源", url: "https://api.coingecko.com/api/v3/ping", tier: 2 },
+  { name: "yahoo", label: "Yahoo Finance 美元指数", url: "https://query1.finance.yahoo.com/v8/finance/chart/DX-Y.NYB?range=5d&interval=1d", tier: 2 },
+  { name: "frankfurter", label: "欧央行汇率（DXY 备源）", url: "https://api.frankfurter.dev/v1/latest?base=USD&symbols=EUR", tier: 2 },
   { name: "blockchain-info", label: "blockchain.info 深度备源", url: "https://api.blockchain.info/charts/market-price?timespan=2days&format=json", tier: 3 },
 ];
 
