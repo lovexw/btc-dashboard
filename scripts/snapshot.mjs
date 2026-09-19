@@ -5,7 +5,7 @@
 import { writeFile } from "node:fs/promises";
 
 const base = process.argv[2] || "http://127.0.0.1:8788";
-const KEYS = ["overview", "onchain", "mining", "sentiment"]; // history 太大，不在 localStorage 兜底链里
+const KEYS = ["overview", "onchain", "mining", "sentiment", "etf"]; // history 太大，不在 localStorage 兜底链里
 
 function downsample(x) {
   if (Array.isArray(x)) {

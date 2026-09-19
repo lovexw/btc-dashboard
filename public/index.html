@@ -89,6 +89,8 @@
       <div class="card chart-card"><div class="label">Reserve Risk（持币风险回报）<i class="tip" data-tip="衡量长期持有者『舍得卖』的程度：蓝线越低，说明大家越惜售，持币的机会成本回报越高（ accumulate 区）；越高说明筹码在派发。"></i></div><div id="c_rr" class="chart" data-chart="rr"></div></div>
       <div class="card chart-card"><div class="label">SOPR（花费产出利润率）<i class="tip" data-tip="当天花出去的币，平均是赚还是卖亏了？>1 获利了结正常；持续 <1 说明在亏损割肉，常见于底部区域。"></i></div><div id="c_sopr" class="chart" data-chart="sopr"></div></div>
       <div class="card chart-card"><div class="label">盈利供应占比（%）<i class="tip" data-tip="当前价格下处于盈利状态的筹码占比。<50% 满街套牢盘（底部区），>95% 几乎人人赚钱（顶部区）。"></i></div><div id="c_sip" class="chart" data-chart="sip"></div></div>
+      <div class="card chart-card"><div class="label">MVRV Z-Score（历史分位）<i class="tip" data-tip="市值减已实现市值再除以市值标准差，衡量浮盈『偏离历史常态』的程度。接近 0 = 全网接近成本线（历史大底），≥6 = 浮盈远超常态（历史顶部区）。附当前值在自身历史的百分位。"></i></div><div id="c_zscore" class="chart" data-chart="zscore"></div></div>
+      <div class="card chart-card"><div class="label">MVRV Z-Score 与价格分位对照</div><div id="c_zfull" class="chart" data-chart="zfull"></div></div>
     </div>
   </section>
 
@@ -113,6 +115,8 @@
     <div class="chart-grid">
       <div class="card chart-card wide"><div class="label">URPD 筹码分布（各价格区间的持币量）<i class="tip" data-tip="把全网 UTXO 按买入成本分桶：柱子越高，代表在那个价格区间买入的币越多。当前价格线下方的密集柱=支撑『筹码底』，上方密集柱=解套抛压区。橙线为当前价格。"></i></div><div id="c_urpd" class="chart" data-chart="urpd"></div></div>
       <div class="card chart-card"><div class="label">长期持有者亏损供应（BTC）<i class="tip" data-tip="持有超过 155 天的币中处于亏损的数量。长期持有者是市场最坚定的力量，当连他们都大面积亏损（飙升）时，历史上几乎都是底部区。"></i></div><div id="c_lthloss" class="chart" data-chart="lthloss"></div></div>
+      <div class="card chart-card"><div class="label">HODL Waves：长期持有者供应占比（%）<i class="tip" data-tip="持有超过 155 天未动的币占流通量的比例。占比升高=市场在囤币（筹码沉淀，常见于熊底与牛市前夜）；占比骤降=老筹码在向新资金派发（常见于牛市顶部）。"></i></div><div id="c_hodl" class="chart" data-chart="hodl"></div></div>
+      <div class="card chart-card"><div class="label">休眠指数（1 周平滑）<i class="tip" data-tip="衡量『老币』移动程度的指标：币龄越长、数量越大的转账，指数越高。飙升=沉睡的老币苏醒换手（顶部派发常见）；低迷=大家都在装死囤币（底部常见）。"></i></div><div id="c_dormancy" class="chart" data-chart="dormancy"></div></div>
       <div id="onchainCards" class="card-grid"></div>
     </div>
   </section>
@@ -122,6 +126,8 @@
     <h2><span class="bar"></span>网络与矿业 <small>Mining — 算力、难度与矿工成本</small></h2>
     <div id="miningCards" class="card-grid"></div>
     <div class="chart-grid">
+      <div class="card chart-card"><div class="label">网络活跃度：活跃地址与交易数（3 年）<i class="tip" data-tip="每天链上活跃地址数与交易笔数。长期增长=真实使用在扩大；价格涨而活跃度不涨=上涨缺乏基本面配合。来自 Coin Metrics 社区版。"></i></div><div id="c_adr" class="chart" data-chart="adr"></div></div>
+      <div class="card chart-card wide"><div class="label">ETF 资金流：每日净流入与累计（2024-01 上市以来）<i class="tip" data-tip="美国现货比特币 ETF 每日净申购减赎回的美元净额（柱），以及累计净流入（线）。ETF 是 2024 年后最大的边际买家：持续净流入=机构在吸筹，大幅净流出=机构在减仓。数据：Farside Investors。"></i></div><div id="c_etf" class="chart" data-chart="etf"></div></div>
       <div class="card chart-card"><div class="label">全网算力与难度（3 年）<i class="tip" data-tip="算力（蓝）=全网每秒哈希次数，代表矿工投入的机器规模；难度（橙）自动调节出块速度。两者长期向上=矿工对未来的信心投票。"></i></div><div id="c_hash" class="chart" data-chart="hash"></div></div>
       <div class="card">
         <div class="label">矿工关机币价测算 <i class="tip" data-tip="按『能效比 × 电价』组合估算：币价低于该值时该类矿机挖矿亏本，会关机。表中价低于现价的场景仍在开机。注意这是简化模型，未含托管费与折旧。"></i></div>
@@ -134,6 +140,7 @@
   <section id="sentiment">
     <h2><span class="bar"></span>情绪与资金面 <small>Sentiment & Flows — 聪明钱和情绪温度计</small></h2>
     <div id="sentCards" class="card-grid"></div>
+    <div id="etfCards" class="card-grid" style="margin-top:14px"></div>
     <div class="chart-grid">
       <div class="card chart-card"><div class="label">恐惧贪婪指数（2 年）<i class="tip" data-tip="情绪的长期摆动。绿色区（<25 极度恐惧）与红色区（>75 极度贪婪）常与阶段性底/顶重合。"></i></div><div id="c_fgi" class="chart" data-chart="fgi"></div></div>
       <div class="card chart-card"><div class="label">永续合约资金费率（30 天，OKX）<i class="tip" data-tip="永续合约多空双方每 8 小时互付的费用。持续为正且偏高=多头拥挤、杠杆过热；为负=空头拥挤，轧空风险。年化 = 费率 × 3 × 365。"></i></div><div id="c_funding" class="chart" data-chart="funding"></div></div>

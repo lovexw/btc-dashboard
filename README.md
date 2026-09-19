@@ -14,8 +14,10 @@
 | 成本锚 | 成本阶梯（现价相对各链上成本线的位置）+ 4 年成本线叠图（已实现价格/真实市场均值/STH 成本/UTXO 中位成本/均衡价格） |
 | 链上 | URPD 筹码分布、长期持有者亏损供应、STH 成本、TMM、STH-MVRV 等 |
 | 矿业 | 算力与难度（3 年）、难度调整倒计时、24h 奖励与手续费、内存池拥堵、推荐费率、关机币价 4×3 场景矩阵 |
-| 情绪资金 | FGI 2 年历史、OKX 资金费率 30 天、USDT/USDC 市值 180 天、Coinbase 溢价、Polymarket 2026 价格目标概率 |
-| 学堂 | 26 个指标的小白学堂（一句话人话 + 原理 + 阈值 + 数据源） |
+| 情绪资金 | FGI 2 年历史、OKX 资金费率 30 天、USDT/USDC 市值 180 天、Coinbase 溢价、**现货 ETF 每日净流入与累计（2024-01 上市以来，Farside）**、Polymarket 2026 价格目标概率 |
+| 链上 | URPD 筹码分布、长期持有者亏损供应、STH 成本、TMM、STH-MVRV、**HODL Waves（LTH 供应占比）、休眠指数** |
+| 矿业/网络 | 算力与难度（3 年）、难度调整倒计时、24h 奖励与手续费、内存池拥堵、推荐费率、关机币价 4×3 场景矩阵、**Hash Ribbons 算力均线（30/60 日金叉死叉）、网络活跃度（活跃地址/交易数）** |
+| 学堂 | 32 个指标的小白学堂（一句话人话 + 原理 + 阈值 + 数据源） |
 | 数据源 | 14 个上游实时健康检查 + 容灾说明 |
 
 ## 数据源（全部一手公开 API，多级备源）
@@ -24,7 +26,8 @@
 | --- | --- | --- |
 | 现货价格 | Binance 公共行情 (data-api.binance.vision) | Coinbase Exchange → OKX → 日线收盘 |
 | 价格历史（2013–） | Bitview/BRK (bitview.space) | mempool.space 小时价 → blockchain.info 全历史 |
-| MVRV / NUPL / Puell / Reserve Risk / 成本线 / URPD | Bitview/BRK | BGeometrics（4 域名轮换）→ Coin Metrics |
+| MVRV / NUPL / Puell / Reserve Risk / 成本线 / URPD / **MVRV-Z** / **HODL Waves** / **休眠指数** | Bitview/BRK | BGeometrics（4 域名轮换）→ Coin Metrics |
+| 现货 ETF 净流入 | Farside Investors（经 Jina Reader 渲染通道，6h 缓存） | 直接抓取（其 Cloudflare 盾放行时） |
 | SOPR / 均衡价格 / 转移价格 | BGeometrics (bitcoin-data.com) | BRK 块级 SOPR；realized−transfer 自算 |
 | 网络与矿业 | mempool.space | bitview.space 兼容镜像 |
 | 恐惧贪婪 | Alternative.me | — |
@@ -33,7 +36,7 @@
 | 预测市场 | Polymarket | — |
 | 市值 | 现价 × 精确链上供应量 | CoinGecko |
 
-自算指标（公式透明）：200WMA、MA111/250/350/850、Pi Cycle、200日定投成本（调和平均）、幂律 OLS 回归+残差分位走廊、AHR999 经典与自拟合、综合估值评分（7 维分段线性加权）、关机币价矩阵。
+自算指标（公式透明）：200WMA、MA111/250/350/850、Pi Cycle、200日定投成本（调和平均）、幂律 OLS 回归+残差分位走廊、AHR999 经典与自拟合、综合估值评分（7 维分段线性加权）、MVRV Z-Score（含历史分位）、HODL Waves 占比、Hash Ribbons 算力均线、关机币价矩阵。
 
 ## 容灾设计（三层）
 
@@ -88,6 +91,7 @@ scripts/snapshot.mjs  快照生成脚本
 | `GET /api/onchain` | 6h | MVRV/NUPL/Puell/Reserve Risk/SOPR/成本线/URPD（含 latest 与历史序列） |
 | `GET /api/mining` | 30min | 难度调整、算力 3 年、奖励、费率、内存池、关机币价矩阵 |
 | `GET /api/sentiment` | 5min | FGI 2 年、资金费率 30 天、稳定币 180 天、Coinbase 溢价、Polymarket |
+| `GET /api/etf` | 6h | 现货 ETF 每日净流入/累计/各发行人（Farside，690 个交易日） |
 | `GET /api/health` | 30s | 14 个上游并发探测 |
 
 ## License

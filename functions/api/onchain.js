@@ -31,6 +31,12 @@ async function buildOnchain() {
     { k: "sopr", p: bgeoSeries("sopr") },
     { k: "balanced", p: bgeoSeries("balanced-price") },
     { k: "transfer", p: bgeoSeries("transfer-price") },
+    // 新增：MVRV-Z / 休眠指数 / HODL Waves
+    { k: "marketCap", p: brkSeries("market_cap", { start: FULL_START }) },
+    { k: "realizedCap", p: brkSeries("realized_cap", { start: FULL_START }) },
+    { k: "dormancy", p: brkSeries("dormancy_1w", { start: FULL_START }) },
+    { k: "lthSupply", p: brkSeries("lth_supply", { start: FULL_START }) },
+    { k: "supply", p: brkSeries("supply", { start: FULL_START }) },
     { k: "urpd", p: fetchJSON("https://bitview.space/api/urpd/all", { timeout: 25000 }) },
     { k: "tip", p: tipHeight() },
   ]);
@@ -71,6 +77,31 @@ async function buildOnchain() {
       values: r.realizedPrice.value.values.map((v, i) => (m.has(axis4[i]) ? +(v - m.get(axis4[i])).toFixed(1) : null)),
       source: "自算(realized-transfer)",
     };
+  }
+
+  // MVRV Z-Score = (市值 − 已实现市值) / 市值标准差（2013+ 窗口），附历史分位
+  let zOut = null;
+  if (r.marketCap.ok && r.realizedCap.ok) {
+    const caps = r.marketCap.value.values, rcaps = r.realizedCap.value.values;
+    const zdates = r.marketCap.value.dates;
+    const mean = caps.reduce((a, v) => a + v, 0) / caps.length;
+    const sd = Math.sqrt(caps.reduce((a, v) => a + (v - mean) ** 2, 0) / caps.length);
+    if (sd > 0) {
+      const zs = caps.map((c, i) => (rcaps[i] ? (c - rcaps[i]) / sd : null));
+      const valid = zs.filter((z) => z != null);
+      const zLast = valid[valid.length - 1];
+      zOut = {
+        dates: zdates,
+        values: zs.map((z) => (z == null ? null : +z.toFixed(3))),
+        latest: +zLast.toFixed(3),
+        pct: +(100 * valid.filter((z) => z <= zLast).length / valid.length).toFixed(1),
+      };
+    }
+  }
+  // HODL Waves：长期持有者（155 天+）供应占比
+  let lthShare = null;
+  if (r.lthSupply.ok && r.supply.ok) {
+    lthShare = { dates: r.lthSupply.value.dates, values: r.lthSupply.value.values.map((v, i) => (r.supply.value.values[i] ? +((v / r.supply.value.values[i]) * 100).toFixed(2) : null)) };
   }
 
   // URPD 筹码分布聚合为价格带
@@ -115,6 +146,9 @@ async function buildOnchain() {
   if (sopr) latest.sopr = pick(sopr);
   if (balanced) latest.balancedPrice = pick(balanced);
   if (r.transfer.ok) latest.transferPrice = pick(r.transfer.value);
+  if (zOut) { latest.mvrvZ = zOut.latest; latest.mvrvZPct = zOut.pct; }
+  if (r.dormancy.ok) latest.dormancy = pick(r.dormancy.value);
+  if (lthShare) latest.lthSupplySharePct = pick(lthShare);
 
   return {
     latest,
@@ -135,6 +169,9 @@ async function buildOnchain() {
       lthLossBtc: r.lthLossBtc.ok ? { dates: axis4, values: r.lthLossBtc.value.values } : null,
       balancedPrice: balanced,
       transferPrice: r.transfer.ok ? { dates: r.transfer.value.dates, values: r.transfer.value.values } : null,
+      mvrvZ: zOut ? { dates: zOut.dates, values: zOut.values } : null,
+      dormancy: r.dormancy.ok ? { dates: axisFull, values: r.dormancy.value.values } : null,
+      lthShare,
     },
     urpd,
     sources: {

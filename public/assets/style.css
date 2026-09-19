@@ -93,7 +93,7 @@ h2 small { font-size: 12px; font-weight: 500; color: var(--muted); }
 .halving-pct { font-size: 22px; font-weight: 800; }
 
 /* ── 快捷条 ── */
-.quick-strip { display: grid; grid-template-columns: repeat(8, 1fr); gap: 10px; margin-top: 14px; }
+.quick-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(132px, 1fr)); gap: 10px; margin-top: 14px; }
 .qs { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; box-shadow: var(--shadow); transition: all .18s; }
 .qs:hover { transform: translateY(-1px); box-shadow: var(--shadow-lg); }
 .qs .k { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

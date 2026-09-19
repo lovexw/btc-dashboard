@@ -4,7 +4,7 @@ const UP = "#dc2626", DOWN = "#16a34a", BRAND = "#f7931a", BLUE = "#2f6fed", PUR
 const ZONE_COLORS = { z1: "#16a34a", z2: "#65a30d", z3: "#d97706", z4: "#ea580c", z5: "#dc2626", z0: GRAY };
 const HALVINGS = ["2012-11-28", "2016-07-09", "2020-05-11", "2024-04-20"];
 
-const state = { overview: null, history: null, onchain: null, mining: null, sentiment: null, health: null, staleKeys: new Set(), builtin: null, price: null };
+const state = { overview: null, history: null, onchain: null, mining: null, sentiment: null, etf: null, health: null, staleKeys: new Set(), builtin: null, price: null };
 const charts = new Map(); // name -> echarts instance
 const chartVisible = new Set(), chartBuilt = new Set();
 
@@ -14,6 +14,7 @@ const fmtBig = (v) => v == null ? "—" : v >= 1e12 ? (v / 1e12).toFixed(2) + " 
 const fmtPct = (v, dp = 1, signed = true) => v == null || !isFinite(v) ? "—" : (signed && v > 0 ? "+" : "") + v.toFixed(dp) + "%";
 const fmtX = (v) => v == null ? "—" : v.toFixed(2) + "×";
 const fmtDate = (ts) => new Date(ts).toLocaleString("zh-CN", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
+const fmtYi = (m) => m == null || !isFinite(m) ? "—" : (m >= 0 ? "+" : "") + "$" + (Math.abs(m) / 100).toFixed(m >= 10000 || Math.abs(m) < 10 ? 1 : 2) + " 亿";
 const zoneCls = (v, th) => { // th: [[threshold, cls], ...] 升序
   for (const [t, c] of th) if (v < t) return c;
   return th[th.length - 1][1];
@@ -272,6 +273,69 @@ const BUILDERS = {
     o.tooltip.valueFormatter = (v) => fmtBig(v);
     return o;
   },
+  etf: () => {
+    const e = state.etf; if (!e || !e.series) return nullOpt();
+    const o = baseOpt({ legend: ["每日净流入", "累计净流入"], grid: { right: 62 } });
+    o.series = [
+      { name: "每日净流入", type: "bar", data: e.series, barWidth: "55%", itemStyle: { color: (p2) => (p2.value[1] >= 0 ? "rgba(220,38,38,.55)" : "rgba(22,163,74,.6)"), borderRadius: 2 } },
+      { name: "累计净流入", type: "line", yAxisIndex: 1, data: e.cumSeries, showSymbol: false, lineStyle: { color: BRAND, width: 1.8 }, itemStyle: { color: BRAND } },
+    ];
+    o.yAxis = [
+      { type: "value", ...axisExtra(), name: "日净流($M)", nameTextStyle: { color: "#8a92a3", fontSize: 10 } },
+      { type: "value", ...axisExtra(), scale: true, splitLine: { show: false }, axisLabel: { color: "#8a92a3", fontSize: 10.5, formatter: (v) => "$" + (v / 1000).toFixed(0) + "B" } },
+    ];
+    o.series[0].markLine = { silent: true, symbol: "none", lineStyle: { color: GRAY, width: 1 }, label: { show: false }, data: [{ yAxis: 0 }] };
+    o.tooltip.formatter = (ps) => {
+      const t = ps[0] && ps[0].value[0] ? new Date(ps[0].value[0]).toLocaleDateString("zh-CN") : "";
+      const rows = ps.map((p2) => `<div style="display:flex;justify-content:space-between;gap:14px"><span style="color:#697180">${esc(p2.seriesName)}</span><b>${p2.seriesName === "每日净流入" ? fmtYi(p2.value[1]) : "$" + (p2.value[1] / 1000).toFixed(1) + "B"}</b></div>`).join("");
+      return `<div style="min-width:170px"><div style="font-weight:700;margin-bottom:4px">${t}</div>${rows}</div>`;
+    };
+    return o;
+  },
+  zscore: () => {
+    const c = state.onchain; if (!c || !c.series.mvrvZ) return nullOpt();
+    const o = baseOpt({ legend: ["MVRV Z"] });
+    const f = from2016(c.series.mvrvZ.dates);
+    o.series = [line("MVRV Z", toPairs(c.series.mvrvZ.dates, c.series.mvrvZ.values, f), BLUE, 1.6, { areaStyle: { color: "rgba(47,111,237,.07)" } })];
+    o.series[0].markLine = { silent: true, symbol: "none", lineStyle: { color: GRAY, type: "dashed", width: 1 }, label: { color: "#8a92a3", fontSize: 10 }, data: [{ yAxis: 0, label: { formatter: "0 成本线" } }, { yAxis: 6, label: { formatter: "6 顶部区" } }] };
+    return o;
+  },
+  zfull: () => {
+    const c = state.onchain, h = state.history; if (!c || !c.series.mvrvZ || !h) return nullOpt();
+    const o = baseOpt({ legend: ["MVRV Z", "BTC 价格"], grid: { right: 62 } });
+    const f = from2016(c.series.mvrvZ.dates);
+    o.series = [
+      { name: "BTC 价格", type: "line", yAxisIndex: 1, data: toPairs(h.dates, h.series.price, Math.max(0, h.dates.findIndex((d) => d >= c.series.mvrvZ.dates[f]))), showSymbol: false, lineStyle: { color: "#aab2c0", width: 1.1 }, itemStyle: { color: "#aab2c0" } },
+      line("MVRV Z", toPairs(c.series.mvrvZ.dates, c.series.mvrvZ.values, f), BLUE, 1.7),
+    ];
+    o.yAxis = [{ type: "value", ...axisExtra() }, { type: "log", logBase: 10, ...axisExtra(), splitLine: { show: false } }];
+    o.tooltip.formatter = (ps) => tipHtml(ps.filter((p2) => p2.seriesName === "MVRV Z"), (v) => v.toFixed(2)) + (ps.some((p2) => p2.seriesName === "BTC 价格") ? tipHtml(ps.filter((p2) => p2.seriesName === "BTC 价格"), (v) => fmtUSD(v)).replace("<div", "<div") : "");
+    return o;
+  },
+  hodl: () => {
+    const c = state.onchain; if (!c || !c.series.lthShare) return nullOpt();
+    const o = baseOpt({ legend: ["LTH 供应占比 %"] });
+    o.series = [line("LTH 供应占比 %", toPairs(c.series.lthShare.dates, c.series.lthShare.values), TEAL, 1.6, { areaStyle: { color: "rgba(13,148,136,.08)" } })];
+    o.yAxis.max = 100;
+    return o;
+  },
+  dormancy: () => {
+    const c = state.onchain; if (!c || !c.series.dormancy) return nullOpt();
+    const o = baseOpt({ legend: ["休眠指数"] });
+    const f = from2016(c.series.dormancy.dates);
+    o.series = [line("休眠指数", toPairs(c.series.dormancy.dates, c.series.dormancy.values, f), PURPLE, 1.5, { areaStyle: { color: "rgba(139,92,246,.07)" } })];
+    return o;
+  },
+  adr: () => {
+    const m = state.mining; if (!m || !m.netActivity) return nullOpt();
+    const o = baseOpt({ legend: ["活跃地址", "交易数"], grid: { right: 62 } });
+    o.series = [
+      { name: "活跃地址", type: "line", data: m.netActivity.dates.map((d, i) => [d, m.netActivity.adr[i]]), showSymbol: false, lineStyle: { color: BLUE, width: 1.5 }, itemStyle: { color: BLUE } },
+      { name: "交易数", type: "line", yAxisIndex: 1, data: m.netActivity.dates.map((d, i) => [d, m.netActivity.tx[i]]), showSymbol: false, lineStyle: { color: BRAND, width: 1.4 }, itemStyle: { color: BRAND } },
+    ];
+    o.yAxis = [{ type: "value", ...axisExtra(), scale: true }, { type: "value", ...axisExtra(), scale: true, splitLine: { show: false } }];
+    return o;
+  },
   hash: () => {
     const m = state.mining; if (!m || !m.hashrate) return nullOpt();
     const o = baseOpt({ legend: ["算力 EH/s", "难度 T"], grid: { right: 54 } });
@@ -416,6 +480,7 @@ function renderQuickStrip() {
     { k: "资金费率(年化)", v: s && s.funding ? fmtPct(s.funding.aprPct, 1) : o && o.funding ? fmtPct(o.funding.aprPct, 1) : "…", tip: "OKX 永续合约年化" },
     { k: "稳定币 30d Δ", v: s && s.stablecoins ? `<span class="${s.stablecoins.usdt.d30Pct >= 0 ? "up" : "down"}">${fmtPct(s.stablecoins.usdt.d30Pct)}</span>` : o && o.stablecoins ? `<span class="${o.stablecoins.usdt.d30Pct >= 0 ? "up" : "down"}">${fmtPct(o.stablecoins.usdt.d30Pct)}</span>` : "…", tip: "USDT 市值 30 天变化（增量资金）" },
     { k: "Coinbase 溢价", v: s && s.coinbasePremiumPct != null ? fmtPct(s.coinbasePremiumPct, 2) : o && o.coinbasePremiumPct != null ? fmtPct(o.coinbasePremiumPct, 2) : "…", tip: "Coinbase 相对 Binance 溢价（美股资金情绪）" },
+    { k: "ETF 30日净流", v: state.etf ? fmtYi(state.etf.sum30M) : "…", tip: "美国现货比特币 ETF 最近 30 个交易日净流入（Farside）" },
   ];
   $("#quickStrip").innerHTML = items.map((i) => `<div class="qs" title="${esc(i.tip)}"><div class="k">${esc(i.k)}</div><div class="v">${i.v}</div></div>`).join("");
 }
@@ -500,6 +565,16 @@ function renderValuation() {
     sub: `111DMA×2 ${fmtUSD(V.pi111)} vs 350DMA×2 ${fmtUSD(V.pi350)}`,
     zone: V.piGapPct != null ? `<span class="badge ${V.piGapPct > 40 ? "z1" : V.piGapPct > 15 ? "z3" : "z5"}">${V.piGapPct > 40 ? "远离顶部" : V.piGapPct > 15 ? "观察" : "接近警戒"}</span>` : "",
   }));
+  // MVRV Z-Score
+  if (c.mvrvZ != null) {
+    const pct = c.mvrvZPct;
+    cards.push(valCard({
+      title: "MVRV Z-Score", tip: "(市值−已实现市值)÷市值标准差：浮盈相对历史常态的偏离度。≤0.1 历史大底区（2015/2018/2022 都出现过）；≥6 历史顶部区。括号内为当前值在 2013 年以来自身的百分位。",
+      value: c.mvrvZ.toFixed(2),
+      sub: pct != null ? `高于 2013 年以来 ${pct}% 的时间` : "",
+      zone: `<span class="badge ${c.mvrvZ <= 0.1 ? "z1" : c.mvrvZ < 2 ? "z2" : c.mvrvZ < 4 ? "z3" : c.mvrvZ < 6 ? "z4" : "z5"}">${c.mvrvZ <= 0.1 ? "历史大底区" : c.mvrvZ < 2 ? "偏低估" : c.mvrvZ < 4 ? "中性" : c.mvrvZ < 6 ? "偏热" : "顶部区"}</span>`,
+    }));
+  }
   // 定投成本
   cards.push(valCard({
     title: "200日定投成本", tip: "每天买 1 元连买 200 天的平均成本（调和平均，接近真实定投成本）。现价低于它 = 定投党整体被套，历史上多为定投黄金窗口。",
@@ -575,6 +650,8 @@ function renderOnchainCards() {
     { t: "转移价格 Transfer Price", v: L.transferPrice != null ? fmtUSD(L.transferPrice) : "—", s: "1 年内活跃资本的成本", tip: "近一年活跃筹码的链上成本，代表『热钱』的成本线。" },
     { t: "STH-MVRV", v: L.sthMvrv != null ? fmtX(L.sthMvrv) : "—", s: "短期持有者盈亏倍数", tip: "新资金平均盈利(<1 被套)程度。历史上 STH-MVRV 深度 <0.9 常见于熊底，>1.3 常见于牛市过热。" },
     { t: "全网 NUPL", v: L.nupl != null ? L.nupl.toFixed(3) : "—", s: "全网浮盈率（市值-已实现市值/市值）", tip: "全网未实现净盈亏占比。<0 全网亏损（投降区）；>0.75 泡沫区。" },
+    { t: "LTH 供应占比", v: L.lthSupplySharePct != null ? L.lthSupplySharePct.toFixed(1) + "%" : "—", s: "持有 155 天+ 的筹码比例", tip: "HODL Waves 的简化版：占比升高=囤币沉淀（熊底/牛市前夜），骤降=老筹码派发（牛市顶部）。" },
+    { t: "休眠指数（1 周均）", v: L.dormancy != null ? L.dormancy.toFixed(2) : "—", s: "老币移动程度，越低越惜售", tip: "币天销毁的归一化版本。飙升=沉睡老币苏醒换手（顶部派发常见）；低迷=囤币装死（底部常见）。" },
   ];
   $("#onchainCards").innerHTML = items.map((i) => valCard({ title: i.t, tip: i.tip, value: i.v, sub: i.s })).join("");
 }
@@ -598,6 +675,15 @@ function renderMining() {
   if (m.fees) cards.push(valCard({ title: "链上手续费", tip: "内存池推荐费率（sat/vByte）。转账越拥挤费率越高；长期低于 5 sat/vB 说明链上很空闲。", value: m.fees.fastestFee + " sat/vB", s: `最快 ${m.fees.fastestFee} · 30分钟 ${m.fees.halfHourFee} · 1小时 ${m.fees.hourFee}` }));
   if (m.mempool) cards.push(valCard({ title: "内存池占用", tip: "等待打包的交易总量。越大越拥堵，费率越高。", value: m.mempool.vsizeMB + " MB", s: `${m.mempool.count.toLocaleString()} 笔待确认 · 待付 ${m.mempool.totalFeeBtc} BTC` }));
   if (m.tip) cards.push(valCard({ title: "区块高度", tip: "当前主链块高。每 210,000 块奖励减半一次。", value: m.tip.toLocaleString(), s: `下次减半于 ${Math.ceil((m.tip + 1) / 210000) * 210000 - m.tip} 块后` }));
+  if (m.hashRibbons) {
+    const rb = m.hashRibbons;
+    cards.push(valCard({
+      title: "Hash Ribbons 算力均线", tip: "算力 30 日均线 vs 60 日均线。30 日重新上穿 60 日（金叉）=矿工投降结束、算力恢复，历史上常对应牛市的最佳买入窗口之一；死叉=矿机关机潮。",
+      value: rb.sma30 + " / " + rb.sma60 + " EH/s",
+      s: rb.lastCross ? `最近交叉：${rb.lastCross.date}（${rb.lastCross.dir === "up" ? "金叉" : "死叉"}）` : "",
+      zone: `<span class="badge ${rb.status === "up" ? "down" : "up"}">${rb.status === "up" ? "算力上行" : "算力下行"}</span>`,
+    }));
+  }
   $("#miningCards").innerHTML = cards.join("");
 
   if (m.shutdown) {
@@ -609,6 +695,20 @@ function renderMining() {
       <tbody>${effs.map((e) => `<tr><td><b>${e} J/TH</b></td>${s.rows.filter((r) => r.effJth === e).map((r) => cell(r)).join("")}</tr>`).join("")}</tbody></table>
       <div class="cap">现价 <b>${fmtUSD(s.price)}</b> · 中位关机价 <b>${fmtUSD(s.median)}</b>（现价${s.marginPct >= 0 ? "高出中位 " + s.marginPct + "%" : "低于中位 " + (-s.marginPct) + "%"}）<br/>日产出 ≈ ${s.dailyIssuanceBtc} BTC + 手续费 ${s.dailyFeesBtc} BTC · 假设：${esc(s.assumptions)}</div>`;
   }
+}
+
+/* ───────── ETF 资金流 ───────── */
+function renderEtf() {
+  const e = state.etf; if (!e || !e.latest) return;
+  const dir = e.latest.totalM >= 0;
+  const cards = [
+    { t: "ETF 最新单日净流入", v: fmtYi(e.latest.totalM), s: e.latest.date + "（美东交易日）", z: dir ? "up" : "down", zl: dir ? "净流入" : "净流出", tip: "当日所有美国现货比特币 ETF 的申购减赎回净额。持续为正=机构在增持敞口。" },
+    { t: "最近 7 日累计", v: fmtYi(e.sum7M), s: "一周机构资金方向", z: e.sum7M >= 0 ? "up" : "down", zl: e.sum7M >= 0 ? "流入" : "流出", tip: "近 7 个交易日净流入之和，过滤单日噪音看周度趋势。" },
+    { t: "最近 30 日累计", v: fmtYi(e.sum30M), s: "月度资金面", z: e.sum30M >= 0 ? "up" : "down", zl: e.sum30M >= 0 ? "流入" : "流出", tip: "近 30 个交易日净流入之和。月度级别持续流入是牛市最重要的燃料之一。" },
+    { t: "上市以来累计", v: fmtYi(e.cumulativeM), s: "2024-01-11 上市至今 · " + e.updatedDate + " 更新", z: "", zl: "", tip: "现货 ETF 上市以来净申购总规模，代表通过受监管渠道进入比特币的传统资本总量。" },
+  ];
+  $("#etfCards").innerHTML = cards.map((i) => valCard({ title: i.t, tip: i.tip, value: i.v, sub: i.s, zone: i.z ? `<span class="badge ${i.z}">${i.zl}</span>` : "" })).join("") +
+    (e.issuers && e.issuers.length ? `<div class="card val-card fade-in"><div class="label">各 ETF 累计净流入 <i class="tip" data-tip="上市以来每只基金的累计净申购（百万美元）。IBIT（贝莱德）与 FBTC（富达）占大头；GBTC 为负=灰度老信托在持续赎回。"></i></div><div class="s" style="line-height:2">${e.issuers.slice(0, 6).map((x) => `<b>${esc(x.name)}</b> ${fmtYi(x.cumM)}`).join(" · ")}</div></div>` : "");
 }
 
 /* ───────── 情绪 ───────── */
@@ -683,6 +783,12 @@ const GLOSSARY = [
   { t: "Polymarket 概率", en: "Prediction Market", one: "真金白银押出来的概率，比嘴上的预测更诚实。", detail: "Polymarket 用 USDC 结算的预测市场，价格即市场对事件概率的共识。", how: "对比各价位触达概率与你自己判断的偏差，可以校准预期。注意预测市场也有流动性与偏差。", src: "Polymarket" },
   { t: "Pi Cycle 顶部", en: "Pi Cycle Top", one: "111日均线×2 追上 350日均线×2 时，历史上都撞上周期大顶。", detail: "短期均线×2 的快速上穿长期均线×2，代表短期价格过热到极端。", how: "两线相距 %（本站给出）>40% 安全；接近 0–15% 进入历史顶部警戒区。", src: "自算" },
   { t: "红涨绿跌", en: "Color Convention", one: "本站遵循国内行情习惯：红色=上涨/风险偏高，绿色=下跌/机会偏高。", detail: "与国际市场（绿涨红跌）相反，初次使用请注意区分。", how: "在估值区间里，绿色=便宜/积累区，红色=贵/派发区，与涨跌色一致。", src: "—" },
+  { t: "现货 ETF 净流入", en: "US Spot Bitcoin ETF Net Flow", one: "传统资金进入比特币的主干道，每天看一眼就知道机构在买还是在卖。", detail: "2024 年 1 月 11 日美国批准现货比特币 ETF 后，贝莱德 IBIT、富达 FBTC 等基金每天公布申购/赎回。净流入=申购多于赎回，意味着这些基金要真的去市场上买币；净流出则相反。GBTC（灰度）因高费率长期净赎回，需与新产品分开看。", how: "单日噪音大，重点看 7 日/30 日累计：月度级别持续净流入是牛市最硬的资金面证据；连续大幅净流出常伴随回调。上市以来累计额代表传统资本的总敞口。", src: "Farside Investors（经渲染通道，服务端 6 小时缓存）" },
+  { t: "MVRV Z-Score", en: "MVRV Z-Score", one: "给 MVRV 加上『统计显著性』的顶部/底部仪表盘。", detail: "=（市值 − 已实现市值）÷ 市值标准差。普通 MVRV 只看浮盈倍数，Z-Score 进一步衡量这个浮盈相对整个历史有多『反常』，能把 2017 和 2021 这样体量完全不同的周期放在同一把尺子上比较。", how: "≤0.1 历史大底区（2015/2018/2022 底部都到过）；≥6 历史顶部区（2017/2021 顶）。本站同时给出当前值在 2013 年以来数据中的百分位，更直观。注：不同数据源起始年份不同会导致数值略有差异，看趋势与分位比看绝对值更有意义。", src: "自算（Bitview/BRK 市值与已实现市值）" },
+  { t: "HODL Waves / LTH 供应占比", en: "HODL Waves", one: "把全网筹码按『最后一次移动的时间』分层，看大家拿得有多稳。", detail: "持有超过 155 天未移动的币归为长期持有者（LTH）。他们的占比升高，说明筹码在沉淀（囤币）；骤降说明老币在向新资金换手（派发）。", how: "熊底和牛市前夜 LTH 占比持续升高（老币不卖）；牛市后期占比快速下降（老币高位出货给新资金）。配合价格判断派发阶段非常直观。", src: "Bitview/BRK" },
+  { t: "休眠指数", en: "Dormancy", one: "衡量『沉睡的老币』有没有苏醒换手。", detail: "基于币天销毁（CDD）的归一化指标：一枚持有了 100 天的币被转走，销毁 100 币天。休眠指数把销毁量除以供应量，让不同时期可比。", how: "飙升=高币龄筹码大规模移动，历史上多与顶部派发、恐慌抛售同时出现；长期低迷=市场惜售囤币。配合 HODL Waves 一起看。", src: "Bitview/BRK（1 周平滑）" },
+  { t: "Hash Ribbons 算力均线", en: "Hash Ribbons", one: "用矿工的『生死』反着买：矿工投降结束后，往往是最好的买点之一。", detail: "算力 30 日均线与 60 日均线的交叉。矿机大规模关机（如减半后效率淘汰、币价暴跌）会使 30 日线下穿 60 日线（死叉）；矿工重新开机则金叉。", how: "死叉=矿工投降期（常与价格底部重叠）；金叉=投降结束、算力恢复，历史上金叉后的定投窗口回报突出。注意：减半后的机械性关机也会触发死叉，需与币价环境结合判断。", src: "自算（mempool.space 日均算力）" },
+  { t: "网络活跃度", en: "Active Addresses & Transactions", one: "比特币的『日活用户』和『订单量』，链上的基本面。", detail: "每日活跃地址数与链上交易笔数（Coin Metrics 社区版）。剔除中心化交易所的内部买卖，直接反映链上真实使用强度。", how: "长期增长=采用扩大（基本面支撑价格）；价格新高而活跃度平平=上涨靠情绪与杠杆，需警惕背离。短期受 Ordinals/铭文等活动影响会脉冲式波动，看趋势即可。", src: "Coin Metrics 社区版" },
 ];
 function renderGlossary() {
   $("#glossary").innerHTML = GLOSSARY.map((g, i) => `<details ${i === 0 ? "open" : ""}><summary>${esc(g.t)} <span class="muted" style="font-weight:400;font-size:11.5px">${esc(g.en)}</span><span class="chev">▼</span></summary>
@@ -712,6 +818,7 @@ async function loadRest() {
     getJSON("history", "/api/history", { store: false }).then(({ data }) => { state.history = data; refreshVisibleCharts(); renderLadder(); renderValuation(); }),
     getJSON("onchain", "/api/onchain").then(({ data }) => { state.onchain = data; refreshVisibleCharts(); renderValuation(); renderLadder(); renderOnchainCards(); renderQuickStrip(); renderComposite(); }),
     getJSON("mining", "/api/mining").then(({ data }) => { state.mining = data; refreshVisibleCharts(); renderMining(); }),
+    getJSON("etf", "/api/etf", { store: false }).then(({ data }) => { state.etf = data; refreshVisibleCharts(); renderEtf(); renderQuickStrip(); }),
     getJSON("sentiment", "/api/sentiment").then(({ data }) => { state.sentiment = data; refreshVisibleCharts(); renderSentiment(); renderQuickStrip(); }),
   ];
   await Promise.allSettled(jobs);
