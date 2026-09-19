@@ -41,6 +41,13 @@
 2. **Cloudflare 边缘缓存** — 所有 `/api/*` 经 Pages Functions 代理：行情 60s / 情绪 5min / 矿业 30min / 链上与历史 6h。上游限流（如 BGeometrics 匿名 10 次/时）由边缘缓存吸收。
 3. **本地快照兜底** — 浏览器 localStorage 保存最近成功数据 → 全挂时回退仓库内置 `public/data/snapshot.json`，页面亮黄条提示数据延迟，绝不白屏。
 
+## 线上地址
+
+- https://btc-dashboard-19r.pages.dev （Cloudflare Pages 默认域）
+- https://db.btchao.com （自定义域）
+
+> 已知边界：Binance 公共行情对 Cloudflare/数据中心 IP 返回 403，服务端价格自动切换 Coinbase/OKX；浏览器端直连 Binance 不受影响。BGeometrics 对数据中心 IP 限流严格，均衡价格/SOPR 在边缘可能间歇显示为空（前端自动回退 BRK 口径或标注暂无数据）。
+
 ## 本地开发
 
 ```bash

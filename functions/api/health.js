@@ -2,13 +2,13 @@
 import { json, withTimeout, fetchText } from "../lib/util.js";
 
 const CHECKS = [
-  { name: "binance-vision", label: "Binance 公共行情（价格主源）", url: "https://data-api.binance.vision/api/v3/ping", tier: 1 },
-  { name: "coinbase", label: "Coinbase 行情（价格备源）", url: "https://api.exchange.coinbase.com/products/BTC-USD/stats", tier: 1 },
+  { name: "binance-vision", label: "Binance 公共行情（浏览器直连源）", url: "https://data-api.binance.vision/api/v3/ping", tier: 2 },
+  { name: "coinbase", label: "Coinbase 行情（服务端价格主源）", url: "https://api.exchange.coinbase.com/products/BTC-USD/stats", tier: 1 },
   { name: "bitview-price", label: "Bitview/BRK 价格历史", url: "https://bitview.space/api/series/price/day1?start=2026-09-18", tier: 1 },
   { name: "bitview-onchain", label: "Bitview/BRK 链上指标", url: "https://bitview.space/api/series/mvrv/day1?start=2026-09-18", tier: 1 },
   { name: "mempool", label: "mempool.space 网络矿业", url: "https://mempool.space/api/blocks/tip/height", tier: 1 },
   { name: "fng", label: "Alternative.me 恐惧贪婪", url: "https://api.alternative.me/fng/?limit=1", tier: 1 },
-  { name: "binance", label: "Binance 主站（价格备源）", url: "https://api.binance.com/api/v3/ping", tier: 2 },
+  { name: "binance", label: "Binance 主站（浏览器直连备源）", url: "https://api.binance.com/api/v3/ping", tier: 2 },
   { name: "okx", label: "OKX 行情/资金费率", url: "https://www.okx.com/api/v5/public/time", tier: 2 },
   { name: "defillama", label: "DefiLlama 稳定币", url: "https://stablecoins.llama.fi/stablecoins?includePrices=false", tier: 2 },
   { name: "bgeometrics", label: "BGeometrics/SOPR·均衡价", url: "https://api.bgeometrics.com/v1/transfer-price", tier: 2 },
