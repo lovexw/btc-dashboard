@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>BTC 全景仪表盘 · Bitcoin Panorama</title>
+<meta name="description" content="多维度比特币投资仪表盘：AHR999、MVRV、200周均线、幂律走廊、均衡价格、链上成本、矿业、情绪与资金面，全部指标附小白解读。" />
+<link rel="icon" href="favicon.svg" type="image/svg+xml" />
+<link rel="stylesheet" href="assets/style.css" />
+<script src="vendor/echarts.min.js"></script>
+</head>
+<body>
+<nav class="nav">
+  <div class="nav-inner">
+    <a class="brand" href="#overview">
+      <span class="brand-logo">₿</span>
+      <span class="brand-name">BTC 全景仪表盘<small>Bitcoin Panorama</small></span>
+    </a>
+    <div class="nav-links">
+      <a href="#overview">总览</a><a href="#valuation">估值</a><a href="#cycle">周期</a><a href="#cost">成本锚</a><a href="#onchain">链上</a><a href="#mining">矿业</a><a href="#sentiment">情绪资金</a><a href="#learn">学堂</a><a href="#sources">数据源</a>
+    </div>
+    <div class="nav-right">
+      <span id="healthDot" class="health-dot" title="数据源健康"></span>
+      <span id="updatedAt" class="updated">…</span>
+      <button id="refreshBtn" class="btn-refresh" title="手动刷新全部数据">↻ 刷新<span id="refreshIn"></span></button>
+    </div>
+  </div>
+</nav>
+
+<div id="staleBanner" class="stale-banner" hidden>⚠ 部分数据来自本地快照（离线兜底），API 恢复后将自动更新。</div>
+
+<main class="container">
+
+  <!-- ═══════════ 总览 ═══════════ -->
+  <section id="overview">
+    <div class="hero">
+      <div class="card price-card">
+        <div class="label">Bitcoin <span class="muted">BTC / USD</span> <i class="tip" data-tip="多交易所聚合的比特币美元价格。主源 Binance 公共行情，备源 Coinbase / OKX；若全部失败则回退到最近日线收盘价。"></i></div>
+        <div class="price-row"><span id="price" class="price-big skl-block">—</span><span id="chg24" class="chg skl-block">—</span></div>
+        <div id="chgRow" class="chg-row"></div>
+        <div id="athRow" class="sub-row"></div>
+        <div id="mcapRow" class="sub-row muted"></div>
+        <div id="priceSrcRow" class="sub-row muted"></div>
+      </div>
+      <div class="card gauge-card">
+        <div class="label">综合估值仪表 <i class="tip" data-tip="把 MVRV、价格/200周线、幂律位置、Puell、LTH-NUPL、盈利供应占比、恐惧贪婪七个维度按权重折算成 0–100 分：分数越低越接近历史底部区，越高越接近顶部区。仅供参考，非投资建议。"></i></div>
+        <div id="gaugeComp" class="chart gauge"></div>
+        <div id="gaugeCompSub" class="gauge-sub"></div>
+      </div>
+      <div class="card gauge-card">
+        <div class="label">恐惧贪婪指数 <i class="tip" data-tip="Alternative.me 综合波动率、社交与占比数据得出的市场情绪：0 极度恐惧，100 极度贪婪。『别人恐惧我贪婪』——极端恐惧常是长期买点，极端贪婪需警惕。"></i></div>
+        <div id="gaugeFgi" class="chart gauge"></div>
+        <div id="gaugeFgiSub" class="gauge-sub"></div>
+      </div>
+      <div class="card gauge-card">
+        <div class="label">减半倒计时 <i class="tip" data-tip="大约每 21 万个区块（约 4 年），矿工区块奖励减半。历史上减半后 12–18 个月常出现周期高点。进度按当前区块高度 / 下一减半高度计算。"></i></div>
+        <div class="halving">
+          <svg viewBox="0 0 120 120" class="ring"><circle cx="60" cy="60" r="52" class="ring-bg"/><circle id="ringFg" cx="60" cy="60" r="52" class="ring-fg"/></svg>
+          <div class="halving-center"><div id="halvingPct" class="halving-pct">—</div><div class="muted" style="font-size:11px">周期进度</div></div>
+        </div>
+        <div id="halvingSub" class="gauge-sub"></div>
+      </div>
+    </div>
+    <div id="quickStrip" class="quick-strip"></div>
+  </section>
+
+  <!-- ═══════════ 估值 ═══════════ -->
+  <section id="valuation">
+    <h2><span class="bar"></span>核心估值指标 <small>Valuation — 现在到底是贵还是便宜？</small></h2>
+    <div id="valGrid" class="card-grid"></div>
+    <div class="card try-card">
+      <div class="label">自选价格试算 <i class="tip" data-tip="输入一个你关心的价格（比如你的目标买入价），立刻看到该价格下各估值指标的位置。"></i></div>
+      <div class="try-row">
+        <span class="muted">假设价格 $</span><input id="tryPrice" type="number" min="1000" step="100" placeholder="81000" />
+        <span id="tryOut" class="try-out muted">输入后自动试算</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════ 周期图表 ═══════════ -->
+  <section id="cycle">
+    <h2><span class="bar"></span>周期全景 <small>Cycle Charts — 长周期位置一目了然</small></h2>
+    <div class="chart-grid">
+      <div class="card chart-card wide"><div class="label">价格 × 200周均线 × MA250（对数轴，2013 至今）<i class="tip" data-tip="对数坐标展示十几年价格。200周加权均线（橙）是历史上从未被长期跌破的『生命线』，长期跌破多为史诗级底部；MA250（蓝）为一年的平均成本。背景色块为减半周期。"></i></div><div id="c_main" class="chart tall" data-chart="main"></div></div>
+      <div class="card chart-card wide"><div class="label">幂律走廊（公允 / 支撑 / 压力，对数轴）<i class="tip" data-tip="把历史价格对『创世以来天数』做对数回归，得到一条长期公允增长线（蓝），±残差分位形成走廊：下轨（绿）为历史强支撑区，上轨（红）为过热区。价格贴下轨≈捡筹码，冲上轨≈情绪过热。"></i></div><div id="c_pl" class="chart tall" data-chart="pl"></div></div>
+      <div class="card chart-card"><div class="label">MVRV（市值/已实现市值）<i class="tip" data-tip="全体持币的账面总盈利倍数。<1 全市场平均亏损（历史大底）；1.5–2.5 常态区；>3.5–4 历史大顶。"></i></div><div id="c_mvrv" class="chart" data-chart="mvrv"></div></div>
+      <div class="card chart-card"><div class="label">NUPL 与 LTH-NUPL<i class="tip" data-tip="未实现盈利率：全网（蓝）与长期持有者（橙）的浮盈比例。长期持有者 NUPL >0.75 是历史顶部特征，<0 是底部特征。"></i></div><div id="c_nupl" class="chart" data-chart="nupl"></div></div>
+      <div class="card chart-card"><div class="label">Puell 乘数（矿工收入偏离）<i class="tip" data-tip="矿工日收入相对一年均值的高低。<0.5 矿工收入枯竭，常伴随投降式抛售的底部；>4 矿工日进斗金，常在周期顶部附近。"></i></div><div id="c_puell" class="chart" data-chart="puell"></div></div>
+      <div class="card chart-card"><div class="label">Reserve Risk（持币风险回报）<i class="tip" data-tip="衡量长期持有者『舍得卖』的程度：蓝线越低，说明大家越惜售，持币的机会成本回报越高（ accumulate 区）；越高说明筹码在派发。"></i></div><div id="c_rr" class="chart" data-chart="rr"></div></div>
+      <div class="card chart-card"><div class="label">SOPR（花费产出利润率）<i class="tip" data-tip="当天花出去的币，平均是赚还是卖亏了？>1 获利了结正常；持续 <1 说明在亏损割肉，常见于底部区域。"></i></div><div id="c_sopr" class="chart" data-chart="sopr"></div></div>
+      <div class="card chart-card"><div class="label">盈利供应占比（%）<i class="tip" data-tip="当前价格下处于盈利状态的筹码占比。<50% 满街套牢盘（底部区），>95% 几乎人人赚钱（顶部区）。"></i></div><div id="c_sip" class="chart" data-chart="sip"></div></div>
+    </div>
+  </section>
+
+  <!-- ═══════════ 成本锚 ═══════════ -->
+  <section id="cost">
+    <h2><span class="bar"></span>链上成本锚 <small>Cost Anchors — 谁的成本在哪，价格踩在哪条线上</small></h2>
+    <div class="cost-layout">
+      <div class="card">
+        <div class="label">成本阶梯（相对当前价格）<i class="tip" data-tip="把各类『链上平均成本』从高到低排列，并标注当前价格相对它的位置。价格在一条成本线上方=该群体平均盈利，下方=平均被套。"></i></div>
+        <div id="costLadder" class="ladder"></div>
+      </div>
+      <div class="card">
+        <div class="label">成本线 × 价格（近 4 年）<i class="tip" data-tip="已实现价格（全网平均成本）、真实市场均值（剔除早期零成本币的更真实成本）、短期持有者成本（新资金的平均入场价）、UTXO 中位成本（一半筹码的成本低于它）。价格跌破这些线的历史位置，往往是强支撑。"></i></div>
+        <div id="c_cost" class="chart" data-chart="cost"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════ 链上 ═══════════ -->
+  <section id="onchain">
+    <h2><span class="bar"></span>链上结构 <small>On-chain — 筹码与持有者行为</small></h2>
+    <div class="chart-grid">
+      <div class="card chart-card wide"><div class="label">URPD 筹码分布（各价格区间的持币量）<i class="tip" data-tip="把全网 UTXO 按买入成本分桶：柱子越高，代表在那个价格区间买入的币越多。当前价格线下方的密集柱=支撑『筹码底』，上方密集柱=解套抛压区。橙线为当前价格。"></i></div><div id="c_urpd" class="chart" data-chart="urpd"></div></div>
+      <div class="card chart-card"><div class="label">长期持有者亏损供应（BTC）<i class="tip" data-tip="持有超过 155 天的币中处于亏损的数量。长期持有者是市场最坚定的力量，当连他们都大面积亏损（飙升）时，历史上几乎都是底部区。"></i></div><div id="c_lthloss" class="chart" data-chart="lthloss"></div></div>
+      <div id="onchainCards" class="card-grid"></div>
+    </div>
+  </section>
+
+  <!-- ═══════════ 矿业 ═══════════ -->
+  <section id="mining">
+    <h2><span class="bar"></span>网络与矿业 <small>Mining — 算力、难度与矿工成本</small></h2>
+    <div id="miningCards" class="card-grid"></div>
+    <div class="chart-grid">
+      <div class="card chart-card"><div class="label">全网算力与难度（3 年）<i class="tip" data-tip="算力（蓝）=全网每秒哈希次数，代表矿工投入的机器规模；难度（橙）自动调节出块速度。两者长期向上=矿工对未来的信心投票。"></i></div><div id="c_hash" class="chart" data-chart="hash"></div></div>
+      <div class="card">
+        <div class="label">矿工关机币价测算 <i class="tip" data-tip="按『能效比 × 电价』组合估算：币价低于该值时该类矿机挖矿亏本，会关机。表中价低于现价的场景仍在开机。注意这是简化模型，未含托管费与折旧。"></i></div>
+        <div id="shutdownBox" class="shutdown"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════ 情绪资金 ═══════════ -->
+  <section id="sentiment">
+    <h2><span class="bar"></span>情绪与资金面 <small>Sentiment & Flows — 聪明钱和情绪温度计</small></h2>
+    <div id="sentCards" class="card-grid"></div>
+    <div class="chart-grid">
+      <div class="card chart-card"><div class="label">恐惧贪婪指数（2 年）<i class="tip" data-tip="情绪的长期摆动。绿色区（<25 极度恐惧）与红色区（>75 极度贪婪）常与阶段性底/顶重合。"></i></div><div id="c_fgi" class="chart" data-chart="fgi"></div></div>
+      <div class="card chart-card"><div class="label">永续合约资金费率（30 天，OKX）<i class="tip" data-tip="永续合约多空双方每 8 小时互付的费用。持续为正且偏高=多头拥挤、杠杆过热；为负=空头拥挤，轧空风险。年化 = 费率 × 3 × 365。"></i></div><div id="c_funding" class="chart" data-chart="funding"></div></div>
+      <div class="card chart-card wide"><div class="label">稳定币市值（USDT + USDC，近 180 天）<i class="tip" data-tip="场外『子弹』的总量。稳定币市值持续增长=新资金流入加密市场；停滞/下降=增量枯竭。30 天变化是最直观的弹药指标。"></i></div><div id="c_stables" class="chart" data-chart="stables"></div></div>
+      <div class="card wide"><div class="label">Polymarket 预测市场：2026 年内比特币触及各价位的概率 <i class="tip" data-tip="真金白银押注出来的概率（结算于 Binance 价格）。比多数分析师嘴上的预测更『诚实』。"></i></div><div id="pmBox" class="pm-box"></div></div>
+    </div>
+  </section>
+
+  <!-- ═══════════ 小白学堂 ═══════════ -->
+  <section id="learn">
+    <h2><span class="bar"></span>指标小白学堂 <small>每一行数据到底怎么看？</small></h2>
+    <div id="glossary" class="glossary"></div>
+  </section>
+
+  <!-- ═══════════ 数据源 ═══════════ -->
+  <section id="sources">
+    <h2><span class="bar"></span>数据源与容灾 <small>哪里来的数据，坏了怎么办</small></h2>
+    <div class="card">
+      <div class="label">实时健康检查 <i class="tip" data-tip="对本仪表盘用到的全部上游做并发探测（8 秒超时）。一级源影响核心数字，二级源影响辅助模块；任何一个挂了都会自动切换备源。"></i></div>
+      <div id="healthTable" class="health-table"></div>
+    </div>
+    <div class="card source-notes">
+      <div class="label">容灾设计（三层）</div>
+      <ol class="notes">
+        <li><b>上游自动故障转移</b>：每个指标配置多个独立供应商（如价格：Binance → Coinbase → OKX → CoinGecko；链上：BRK → BGeometrics → Coin Metrics），服务端按序尝试。</li>
+        <li><b>服务端边缘缓存</b>：所有请求经 Cloudflare Functions 代理并缓存（行情 60 秒 / 链上 6 小时），上游限流（如 BGeometrics 每小时 10 次）也不会打到源站。</li>
+        <li><b>本地快照兜底</b>：浏览器保存最近一次成功数据；API 全挂时展示快照并亮黄条提示数据延迟，绝不白屏。</li>
+      </ol>
+      <div class="muted" style="margin-top:10px">主数据源：Binance · Coinbase · OKX · mempool.space · Bitview/BRK(bitview.space) · BGeometrics(bitcoin-data.com) · Alternative.me · DefiLlama · Polymarket · Coin Metrics · blockchain.info</div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div>BTC 全景仪表盘 · 数据来自公开 API，仅供参考学习，<b>不构成任何投资建议</b>。币圈风险极高，入市需谨慎。</div>
+    <div class="muted">红涨绿跌（遵循国内行情软件习惯） · 部署于 Cloudflare Pages · <a href="https://github.com/lovexw/btc-dashboard" target="_blank" rel="noopener">GitHub 开源</a></div>
+  </footer>
+</main>
+
+<script type="module" src="assets/app.js"></script>
+</body>
+</html>
