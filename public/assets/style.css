@@ -134,6 +134,9 @@ h2 small { font-size: 12px; font-weight: 500; color: var(--muted); }
 .chart-grid .wide { grid-column: span 2; }
 .chart-card:first-child, .chart-grid > .card:first-child { margin-top: 0; }
 .chart { height: 300px; }
+.chart.dxy-corr { height: 190px; margin-top: 2px; }
+.dxy-note { font-size: 11.5px; margin: -2px 0 4px; }
+.dxy-note b { color: var(--text); }
 .chart.tall { height: 360px; }
 .chart-card .label { margin-bottom: 6px; }
 

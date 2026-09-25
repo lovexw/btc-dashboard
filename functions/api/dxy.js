@@ -42,7 +42,7 @@ function summarize(series, source) {
 async function buildDxy() {
   const r = await firstOk([
     { name: "yahoo(DX-Y.NYB)", run: async () => {
-      const j = await fetchJSON("https://query1.finance.yahoo.com/v8/finance/chart/DX-Y.NYB?range=2y&interval=1d", { timeout: 15000 });
+      const j = await fetchJSON(`https://query1.finance.yahoo.com/v8/finance/chart/DX-Y.NYB?period1=1577836800&period2=${Math.floor(Date.now() / 1000)}&interval=1d`, { timeout: 15000 });
       const res = j.chart && j.chart.result && j.chart.result[0];
       if (!res) throw new Error("yahoo empty");
       const ts = res.timestamp || [], cl = (res.indicators.quote[0].close || []);
@@ -52,7 +52,7 @@ async function buildDxy() {
       return summarize(series, "Yahoo Finance (ICE 美元指数)");
     } },
     { name: "frankfurter(ECB自算)", run: async () => {
-      const start = new Date(Date.now() - 2 * 365 * 86400000).toISOString().slice(0, 10);
+      const start = "2020-01-01"; // 与前端「2020 年至今」口径一致
       const j = await fetchJSON(`https://api.frankfurter.dev/v1/${start}..?base=USD&symbols=${PAIR}`, { timeout: 15000 });
       const rates = j.rates || {};
       const series = Object.keys(rates).sort().map((d) => {
