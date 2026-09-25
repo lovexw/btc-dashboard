@@ -7,7 +7,7 @@ const PAIR = "EUR,JPY,GBP,CAD,SEK,CHF";
 
 export async function onRequest(ctx) {
   try {
-    const { data, cache } = await cachedJSON(ctx, "dxy-v1", 1800, buildDxy);
+    const { data, cache } = await cachedJSON(ctx, "dxy-v2", 1800, buildDxy); // v2：序列口径 2020 年至今
     return json({ ts: Date.now(), cache, ...data }, { ttl: 900 });
   } catch (e) {
     return json({ ts: Date.now(), latest: null, error: String(e.message || e).slice(0, 300) }, { ttl: 300 });
